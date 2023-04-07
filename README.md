@@ -1,4 +1,4 @@
-# conversate
+# teach-bot
 
 Turns out that ChatGPT is actually pretty useful. 
 
