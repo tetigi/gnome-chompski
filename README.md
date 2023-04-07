@@ -39,3 +39,12 @@ Partner: W kinie jest teraz wiele dobrych filmów, szczególnie w gatunku akcji 
 Teacher: "Ekscytujący" means "exciting" in English.
 
 ```
+
+## Installation
+
+Requires a `.env` file with an `API_TOKEN` field set to your [api token](https://platform.openai.com/account/api-keys).
+
+Then just do:
+
+`cargo run`
+
