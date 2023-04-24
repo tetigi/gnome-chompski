@@ -43,6 +43,6 @@ Should be easy enough.
 
 ### Next steps:
 
-1. Tidy up code to get ready for proper integration
+1. ~Tidy up code to get ready for proper integration~
 2. Add handlers for the commands above
 3. ... that's it? Should be pretty simple
