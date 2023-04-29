@@ -4,6 +4,7 @@ use eyre::Result;
 
 pub mod discord;
 pub mod gpt;
+pub mod model;
 
 #[tokio::main]
 async fn main() -> Result<()> {

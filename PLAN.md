@@ -34,15 +34,17 @@
 - Conversations are stored in memory. Don't need anything special there.
 - Conversations are stored per user.
 - Prompts:
-    - !chat <topic/subject/prompt> - starts a new chat from fresh. Clears old state.
-    - !ask <question> - ask the teacher a question
-    - !cases <word> - gets all the cases for a particular word
-    - !ex <word> - get example sentences of usage of a particular word
+  - !chat <topic/subject/prompt> - starts a new chat from fresh. Clears old state.
+  - !ask <question> - ask the teacher a question
+  - !cases <word> - gets all the cases for a particular word
+  - !ex <word> - get example sentences of usage of a particular word
 
 Should be easy enough.
 
 ### Next steps:
 
 1. ~Tidy up code to get ready for proper integration~
-2. Add handlers for the commands above
-3. ... that's it? Should be pretty simple
+2. ~Add handlers for the commands above~
+3. Create a proper abstraction for the GPT piece
+4. Pull out the main conversation state flow
+5. Hook it all together.

@@ -1,5 +1,4 @@
 use eyre::Result;
-use regex::Regex;
 use serenity::{
     async_trait,
     framework::StandardFramework,
@@ -9,36 +8,9 @@ use serenity::{
 };
 use std::env;
 
+use crate::model::Command;
+
 const DISCORD_API_TOKEN: &str = "DISCORD_API_TOKEN";
-const COMMAND_REGEX: &str = r"^!(\w+)\s+(.+)$";
-
-#[derive(Debug, PartialEq, Eq)]
-enum Command {
-    Chat(String),
-    Ask(String),
-    Cases(String),
-    Example(String),
-}
-
-impl Command {
-    fn read(s: &str) -> Option<Command> {
-        let regex = Regex::new(COMMAND_REGEX).expect("implementation error - invalid regex");
-        if let Some(cap) = regex.captures(s) {
-            let command = &cap[1];
-            let arg = &cap[2];
-
-            match command {
-                "chat" => Some(Command::Chat(arg.to_string())),
-                "ask" => Some(Command::Ask(arg.to_string())),
-                "cases" => Some(Command::Cases(arg.to_string())),
-                "ex" => Some(Command::Example(arg.to_string())),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
-}
 
 #[derive(Default)]
 struct Handler;
