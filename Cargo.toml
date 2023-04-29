@@ -7,9 +7,9 @@ edition = "2021"
 dotenv = { version = "0.15.0" }
 inquire = "0.6.0"
 eyre = "0.6.8"
+regex = "1"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
 serenity = { version = "0.11.5", features = ["default_native_tls"] }
 tokio = { version = "1", features = ["full"] }
-

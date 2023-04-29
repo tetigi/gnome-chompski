@@ -1,4 +1,5 @@
 use eyre::Result;
+use regex::Regex;
 use serenity::{
     async_trait,
     framework::StandardFramework,
@@ -9,7 +10,37 @@ use serenity::{
 use std::env;
 
 const DISCORD_API_TOKEN: &str = "DISCORD_API_TOKEN";
+const COMMAND_REGEX: &str = r"^!(\w+)\s+(.+)$";
 
+#[derive(Debug, PartialEq, Eq)]
+enum Command {
+    Chat(String),
+    Ask(String),
+    Cases(String),
+    Example(String),
+}
+
+impl Command {
+    fn read(s: &str) -> Option<Command> {
+        let regex = Regex::new(COMMAND_REGEX).expect("implementation error - invalid regex");
+        if let Some(cap) = regex.captures(s) {
+            let command = &cap[1];
+            let arg = &cap[2];
+
+            match command {
+                "chat" => Some(Command::Chat(arg.to_string())),
+                "ask" => Some(Command::Ask(arg.to_string())),
+                "cases" => Some(Command::Cases(arg.to_string())),
+                "ex" => Some(Command::Example(arg.to_string())),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Default)]
 struct Handler;
 
 #[async_trait]
@@ -20,14 +51,23 @@ impl EventHandler for Handler {
     // Event handlers are dispatched through a threadpool, and so multiple
     // events can be dispatched simultaneously.
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == "!ping" {
-            // Sending a message can fail, due to a network error, an
-            // authentication error, or lack of permissions to post in the
-            // channel, so log to stdout when some error happens, with a
-            // description of it.
-            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
-                println!("Error sending message: {:?}", why);
+        if msg.author.bot {
+            return;
+        }
+
+        let reply = if let Some(cmd) = Command::read(&msg.content) {
+            match cmd {
+                Command::Chat(_) => "chat",
+                Command::Ask(_) => "ask",
+                Command::Cases(_) => "cases",
+                Command::Example(_) => "example",
             }
+        } else {
+            "Unsupported command"
+        };
+
+        if let Err(why) = msg.channel_id.say(&ctx.http, reply).await {
+            println!("Error sending message: {:?}", why);
         }
     }
 
@@ -58,7 +98,7 @@ pub async fn do_chat_bot() -> Result<()> {
     // by Discord for bot users.
     let mut client = Client::builder(&token, intents)
         .framework(framework)
-        .event_handler(Handler)
+        .event_handler(Handler::default())
         .await?;
 
     // Finally, start a single shard, and start listening to events.
@@ -70,4 +110,39 @@ pub async fn do_chat_bot() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_commands() {
+        assert_eq!(
+            Command::read("!chat foo bar"),
+            Some(Command::Chat("foo bar".to_string()))
+        );
+
+        assert_eq!(
+            Command::read("!ask bar baz"),
+            Some(Command::Ask("bar baz".to_string()))
+        );
+        assert_eq!(
+            Command::read("!cases quup"),
+            Some(Command::Cases("quup".to_string()))
+        );
+        assert_eq!(
+            Command::read("!ex quux!"),
+            Some(Command::Example("quux!".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_bad_commands() {
+        assert_eq!(Command::read("chat foo"), None);
+        assert_eq!(Command::read("!foo"), None);
+        assert_eq!(Command::read(""), None);
+        assert_eq!(Command::read("!chat"), None);
+        assert_eq!(Command::read("!chat "), None);
+    }
 }
