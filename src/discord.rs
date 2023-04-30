@@ -2,18 +2,28 @@ use eyre::Result;
 use serenity::{
     async_trait,
     framework::StandardFramework,
+    futures::lock::Mutex,
     model::prelude::{Message, Ready},
     prelude::{Context, EventHandler, GatewayIntents},
     Client,
 };
-use std::env;
+use std::{env, sync::Arc};
 
-use crate::model::Command;
+use crate::model::TeachBot;
 
 const DISCORD_API_TOKEN: &str = "DISCORD_API_TOKEN";
 
-#[derive(Default)]
-struct Handler;
+struct Handler {
+    state: Arc<Mutex<TeachBot>>,
+}
+
+impl Handler {
+    fn new() -> Self {
+        Self {
+            state: Arc::new(Mutex::new(TeachBot::default())),
+        }
+    }
+}
 
 #[async_trait]
 impl EventHandler for Handler {
@@ -27,16 +37,12 @@ impl EventHandler for Handler {
             return;
         }
 
-        let reply = if let Some(cmd) = Command::read(&msg.content) {
-            match cmd {
-                Command::Chat(_) => "chat",
-                Command::Ask(_) => "ask",
-                Command::Cases(_) => "cases",
-                Command::Example(_) => "example",
-            }
-        } else {
-            "Unsupported command"
-        };
+        let mut state = self.state.lock().await;
+
+        let reply = state
+            .handle(&msg.content)
+            .await
+            .expect("could not interact with bot");
 
         if let Err(why) = msg.channel_id.say(&ctx.http, reply).await {
             println!("Error sending message: {:?}", why);
@@ -70,7 +76,7 @@ pub async fn do_chat_bot() -> Result<()> {
     // by Discord for bot users.
     let mut client = Client::builder(&token, intents)
         .framework(framework)
-        .event_handler(Handler::default())
+        .event_handler(Handler::new())
         .await?;
 
     // Finally, start a single shard, and start listening to events.
@@ -82,39 +88,4 @@ pub async fn do_chat_bot() -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_commands() {
-        assert_eq!(
-            Command::read("!chat foo bar"),
-            Some(Command::Chat("foo bar".to_string()))
-        );
-
-        assert_eq!(
-            Command::read("!ask bar baz"),
-            Some(Command::Ask("bar baz".to_string()))
-        );
-        assert_eq!(
-            Command::read("!cases quup"),
-            Some(Command::Cases("quup".to_string()))
-        );
-        assert_eq!(
-            Command::read("!ex quux!"),
-            Some(Command::Example("quux!".to_string()))
-        );
-    }
-
-    #[test]
-    fn test_bad_commands() {
-        assert_eq!(Command::read("chat foo"), None);
-        assert_eq!(Command::read("!foo"), None);
-        assert_eq!(Command::read(""), None);
-        assert_eq!(Command::read("!chat"), None);
-        assert_eq!(Command::read("!chat "), None);
-    }
 }

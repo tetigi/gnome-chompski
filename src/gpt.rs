@@ -43,7 +43,7 @@ struct ChatCompletionResponse {
 }
 
 #[derive(Debug, Default)]
-struct Conversation {
+pub struct Conversation {
     history: Vec<MessageContent>,
 }
 
@@ -68,8 +68,8 @@ impl Conversation {
     }
 
     async fn fetch_response(&mut self) -> Result<MessageContent> {
-        let token =
-            env::var(OPENAI_API_TOKEN).expect(&format!("no {OPENAI_API_TOKEN} found in env"));
+        let token = env::var(OPENAI_API_TOKEN)
+            .unwrap_or_else(|_| panic!("no {OPENAI_API_TOKEN} found in env"));
 
         let body = ChatCompletion {
             model: Model::Gpt35Turbo,
@@ -100,6 +100,3 @@ impl Conversation {
         Ok(message)
     }
 }
-
-// const CONVERSATION_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Let's have a conversation at A2 level in Polish.";
-// const TEACH_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please correct any grammar or mistakes I make in the following sentences, in English. If there are no mistakes, just say 'All good'. Please only speak in English.";
