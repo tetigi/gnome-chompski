@@ -14,7 +14,13 @@ Gnome Chompski is a Discord bot that interacts with ChatGPT in an opinionated wa
 
 ### Get yo'self an OpenAI API token
 
+Simply follow the instructions on the [OpenAI website](https://platform.openai.com/account/api-keys).
+
 ### Get yo'self an Discord API token
+
+Follow the [Getting Started](https://discord.com/developers/docs/getting-started) guide on Discord to get set up.
+
+You simply need to follow it to the [Installing your app](https://discord.com/developers/docs/getting-started#installing-your-app) section, at which point you will get an 'installation URL'. You can paste this into your browser to add Gnome Chompski (or whatever you name the bot) to your groups.
 
 ### Start the bot
 
@@ -50,3 +56,10 @@ At any point in a conversation, you can send the following special commands:
 - `!cases <word>` -> Gnome Chompski will enumerate the different cases of the provided word.
 - `!def <word>` -> Gnome Chompski will define what `word` means.
 - `!chat <topic>` -> Gnome Chompski will start a new conversation as if nothing had ever happened!
+
+## Next Steps
+
+- Get Gnome Chompski set up as a general chat-bot
+- Add better support for other languages
+- ???
+- Profit
