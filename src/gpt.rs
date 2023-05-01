@@ -57,6 +57,10 @@ impl Conversation {
         }
     }
 
+    pub async fn ask(prompt: impl Into<String>, message: impl Into<String>) -> Result<String> {
+        Conversation::new(prompt).message(message).await
+    }
+
     pub async fn message(&mut self, content: impl Into<String>) -> Result<String> {
         self.history.push(MessageContent {
             role: Role::User,

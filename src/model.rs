@@ -5,13 +5,18 @@ use crate::gpt::Conversation;
 
 const COMMAND_REGEX: &str = r"^!(\w+)\s+(.+)$";
 
-const CONVERSATION_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Let's have a conversation at A2 level in Polish.";
-const TEACH_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please correct any grammar or mistakes I make in the following sentence, in English. Please only speak in English.";
+const CONVERSATION_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Let's have a conversation at A2 level in Polish. Do not provide any translations.";
+const TEACH_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please correct any grammar or mistakes I make in the following sentences, in English. Please only speak in English. Do not patronise me with complements.";
+const DEFINE_PROMPT: &str =
+    "I am learning to speak Polish. You are a Polish teacher. What does this word mean?";
+const CASES_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please provide me with all of the cases for the following Polish word.";
+const EXAMPLES_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please provide me with 3 example sentences and translations containing the following Polish word.";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Command {
     Chat(String),
     Ask(String),
+    Define(String),
     Cases(String),
     Example(String),
 }
@@ -26,6 +31,7 @@ impl Command {
             match command {
                 "chat" => Some(Command::Chat(arg.to_string())),
                 "ask" => Some(Command::Ask(arg.to_string())),
+                "def" => Some(Command::Define(arg.to_string())),
                 "cases" => Some(Command::Cases(arg.to_string())),
                 "ex" => Some(Command::Example(arg.to_string())),
                 _ => None,
@@ -47,10 +53,12 @@ impl TeachBot {
             match command {
                 Command::Chat(new_prompt) => {
                     self.conversation = Conversation::new(CONVERSATION_PROMPT);
-
-                    self.chat_response(&new_prompt).await
+                    self.conversation.message(new_prompt).await
                 }
-                _ => todo!(),
+                Command::Ask(question) => Conversation::ask(TEACH_PROMPT, question).await,
+                Command::Define(question) => Conversation::ask(DEFINE_PROMPT, question).await,
+                Command::Cases(word) => Conversation::ask(CASES_PROMPT, word).await,
+                Command::Example(word) => Conversation::ask(EXAMPLES_PROMPT, word).await,
             }
         } else {
             self.chat_response(message).await
@@ -58,10 +66,12 @@ impl TeachBot {
     }
 
     async fn chat_response(&mut self, message: &str) -> Result<String> {
-        let chat_response = self.conversation.message(message).await?;
-        let teach_response = Self::fetch_teacher_thoughts(message).await?;
+        let (chat_response, teach_response) = tokio::join!(
+            self.conversation.message(message),
+            Self::fetch_teacher_thoughts(message)
+        );
 
-        Ok(format!("{chat_response}\n\n(_{teach_response}_)"))
+        Ok(format!("(_{}_)\n\n{}", teach_response?, chat_response?))
     }
 
     async fn fetch_teacher_thoughts(message: &str) -> Result<String> {
