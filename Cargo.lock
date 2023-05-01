@@ -489,6 +489,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "gnome-chompski"
+version = "0.1.0"
+dependencies = [
+ "dotenv",
+ "eyre",
+ "inquire",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serenity",
+ "tokio",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1406,21 +1421,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
-]
-
-[[package]]
-name = "teach-bot"
-version = "0.1.0"
-dependencies = [
- "dotenv",
- "eyre",
- "inquire",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "serenity",
- "tokio",
 ]
 
 [[package]]
