@@ -47,10 +47,41 @@ pub struct TeachBot {
     conversation: Conversation,
 }
 
+pub struct MessageReply {
+    // What should be attached to the original message
+    pub reply: Option<String>,
+
+    // What should be sent to the channel
+    pub channel: Option<String>,
+}
+
+impl MessageReply {
+    pub fn channel(msg: impl Into<String>) -> Self {
+        Self {
+            channel: Some(msg.into()),
+            reply: None,
+        }
+    }
+
+    pub fn reply(msg: impl Into<String>) -> Self {
+        Self {
+            reply: Some(msg.into()),
+            channel: None,
+        }
+    }
+
+    pub fn message_and_reply(msg: impl Into<String>, reply: impl Into<String>) -> Self {
+        Self {
+            reply: Some(reply.into()),
+            channel: Some(msg.into()),
+        }
+    }
+}
+
 impl TeachBot {
-    pub async fn handle(&mut self, message: &str) -> Result<String> {
+    pub async fn handle(&mut self, message: &str) -> Result<MessageReply> {
         if let Some(command) = Command::read(message) {
-            match command {
+            let msg = match command {
                 Command::Chat(new_prompt) => {
                     self.conversation = Conversation::new(CONVERSATION_PROMPT);
                     self.conversation.message(new_prompt).await
@@ -59,19 +90,24 @@ impl TeachBot {
                 Command::Define(question) => Conversation::ask(DEFINE_PROMPT, question).await,
                 Command::Cases(word) => Conversation::ask(CASES_PROMPT, word).await,
                 Command::Example(word) => Conversation::ask(EXAMPLES_PROMPT, word).await,
-            }
+            }?;
+
+            Ok(MessageReply::channel(msg))
         } else {
             self.chat_response(message).await
         }
     }
 
-    async fn chat_response(&mut self, message: &str) -> Result<String> {
+    async fn chat_response(&mut self, message: &str) -> Result<MessageReply> {
         let (chat_response, teach_response) = tokio::join!(
             self.conversation.message(message),
             Self::fetch_teacher_thoughts(message)
         );
 
-        Ok(format!("(_{}_)\n\n{}", teach_response?, chat_response?))
+        Ok(MessageReply::message_and_reply(
+            chat_response?,
+            teach_response?,
+        ))
     }
 
     async fn fetch_teacher_thoughts(message: &str) -> Result<String> {

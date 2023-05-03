@@ -34,13 +34,21 @@ impl EventHandler for Handler {
 
         let mut state = self.state.lock().await;
 
-        let reply = state
+        let message_and_reply = state
             .handle(&msg.content)
             .await
             .expect("could not interact with bot");
 
-        if let Err(why) = msg.channel_id.say(&ctx.http, reply).await {
-            println!("Error sending message: {:?}", why);
+        if let Some(reply) = message_and_reply.reply {
+            if let Err(why) = msg.reply(&ctx.http, reply).await {
+                println!("Error sending reply: {:?}", why);
+            }
+        }
+
+        if let Some(message) = message_and_reply.channel {
+            if let Err(why) = msg.channel_id.say(&ctx.http, message).await {
+                println!("Error sending message: {:?}", why);
+            }
         }
     }
 
