@@ -56,6 +56,7 @@ At any point in a conversation, you can send the following special commands:
 - `!cases <word>` -> Gnome Chompski will enumerate the different cases of the provided word.
 - `!def <word>` -> Gnome Chompski will define what `word` means.
 - `!chat <topic>` -> Gnome Chompski will start a new conversation as if nothing had ever happened!
+- `!undo` -> Forget the last message and reply (useful if you want to retry a sentence).
 
 ## Next Steps
 
