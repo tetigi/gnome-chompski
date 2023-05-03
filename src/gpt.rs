@@ -1,5 +1,6 @@
-use eyre::Result;
+use eyre::{Context, Result};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::env;
 
 const OPENAI_API_TOKEN: &str = "OPENAI_API_TOKEN";
@@ -57,6 +58,14 @@ impl Conversation {
         }
     }
 
+    pub fn forget_last(&mut self) -> Option<String> {
+        if self.history.len() > 1 {
+            Some(self.history.remove(self.history.len() - 1).content)
+        } else {
+            None
+        }
+    }
+
     pub async fn ask(prompt: impl Into<String>, message: impl Into<String>) -> Result<String> {
         Conversation::new(prompt).message(message).await
     }
@@ -91,7 +100,13 @@ impl Conversation {
             .send()
             .await?;
 
-        let response: ChatCompletionResponse = res.json().await?;
+        let res_value: Value = res
+            .json()
+            .await
+            .wrap_err("could not dese response body at all")?;
+
+        let response: ChatCompletionResponse = serde_json::from_value(res_value.clone())
+            .wrap_err_with(|| format!("could not dese json body: {res_value:#?}"))?;
         let message = response
             .choices
             .first()

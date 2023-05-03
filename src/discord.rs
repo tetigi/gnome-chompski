@@ -34,10 +34,22 @@ impl EventHandler for Handler {
 
         let mut state = self.state.lock().await;
 
+        let typing = match msg.channel_id.start_typing(&ctx.http) {
+            Err(why) => {
+                println!("Error starting typing: {:?}", why);
+                None
+            }
+            Ok(typing) => Some(typing),
+        };
+
         let message_and_reply = state
             .handle(&msg.content)
             .await
             .expect("could not interact with bot");
+
+        if let Some(typing) = typing {
+            let _ = typing.stop();
+        }
 
         if let Some(reply) = message_and_reply.reply {
             if let Err(why) = msg.reply(&ctx.http, reply).await {

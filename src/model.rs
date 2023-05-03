@@ -4,6 +4,7 @@ use regex::Regex;
 use crate::gpt::Conversation;
 
 const COMMAND_REGEX: &str = r"^!(\w+)\s+(.+)$";
+const NO_ARG_COMMAND_REGEX: &str = r"^!(\w+)$";
 
 const CONVERSATION_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Let's have a conversation at A2 level in Polish. Do not provide any translations.";
 const TEACH_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please correct any grammar or mistakes I make in the following sentences, in English. Please only speak in English. Do not patronise me with complements.";
@@ -19,12 +20,15 @@ pub enum Command {
     Define(String),
     Cases(String),
     Example(String),
+    Undo,
 }
 
 impl Command {
     pub fn read(s: &str) -> Option<Command> {
-        let regex = Regex::new(COMMAND_REGEX).expect("implementation error - invalid regex");
-        if let Some(cap) = regex.captures(s) {
+        let cmd_regex = Regex::new(COMMAND_REGEX).expect("implementation error - invalid regex");
+        let no_arg_cmd_regex =
+            Regex::new(NO_ARG_COMMAND_REGEX).expect("implementation error - invalid regex");
+        if let Some(cap) = cmd_regex.captures(s) {
             let command = &cap[1];
             let arg = &cap[2];
 
@@ -34,6 +38,13 @@ impl Command {
                 "def" => Some(Command::Define(arg.to_string())),
                 "cases" => Some(Command::Cases(arg.to_string())),
                 "ex" => Some(Command::Example(arg.to_string())),
+                _ => None,
+            }
+        } else if let Some(cap) = no_arg_cmd_regex.captures(s) {
+            let command = &cap[1];
+
+            match command {
+                "undo" => Some(Command::Undo),
                 _ => None,
             }
         } else {
@@ -90,11 +101,36 @@ impl TeachBot {
                 Command::Define(question) => Conversation::ask(DEFINE_PROMPT, question).await,
                 Command::Cases(word) => Conversation::ask(CASES_PROMPT, word).await,
                 Command::Example(word) => Conversation::ask(EXAMPLES_PROMPT, word).await,
+                Command::Undo => return self.undo_reply(),
             }?;
 
             Ok(MessageReply::channel(msg))
         } else {
             self.chat_response(message).await
+        }
+    }
+
+    fn undo_reply(&mut self) -> Result<MessageReply> {
+        let message_last = self.conversation.forget_last();
+        let message_last_but_one = self.conversation.forget_last();
+
+        if message_last_but_one.is_none() && message_last.is_none() {
+            Ok(MessageReply::reply(
+                "There are no messages in the history to undo.",
+            ))
+        } else {
+            let mut reply = String::new();
+            reply.push_str("Forgot about the following messages:\n");
+
+            if let Some(msg) = message_last_but_one {
+                reply.push_str(&format!("> {msg}"));
+            }
+
+            if let Some(msg) = message_last {
+                reply.push_str(&format!("\n> {msg}"));
+            }
+
+            Ok(MessageReply::reply(reply))
         }
     }
 
@@ -146,6 +182,7 @@ mod tests {
             Command::read("!ex quux!"),
             Some(Command::Example("quux!".to_string()))
         );
+        assert_eq!(Command::read("!undo foo bar"), Some(Command::Undo));
     }
 
     #[test]
