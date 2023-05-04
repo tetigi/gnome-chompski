@@ -51,12 +51,13 @@ Gnome Chompski will also correct any mistakes you make when you write to him. So
 
 At any point in a conversation, you can send the following special commands:
 
+- `!chat <topic>` -> Gnome Chompski will start a new conversation as if nothing had ever happened!
 - `!ask <question>` -> Ask Gnome Chompski a question without interrupting the conversation flow.
 - `!ex <word>` -> Gnome Chompski will provide you 3 example sentences containing that word, with translations.
 - `!cases <word>` -> Gnome Chompski will enumerate the different cases of the provided word.
 - `!def <word>` -> Gnome Chompski will define what `word` means.
-- `!chat <topic>` -> Gnome Chompski will start a new conversation as if nothing had ever happened!
 - `!undo` -> Forget the last message and reply (useful if you want to retry a sentence).
+- `!help` -> Print a helpful help message.
 
 ## Next Steps
 
