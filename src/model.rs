@@ -1,5 +1,6 @@
 use eyre::Result;
 use regex::Regex;
+use strum::{EnumIter, IntoEnumIterator};
 
 use crate::gpt::Conversation;
 
@@ -13,7 +14,7 @@ const DEFINE_PROMPT: &str =
 const CASES_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please provide me with all of the cases for the following Polish word.";
 const EXAMPLES_PROMPT: &str = "I am learning to speak Polish. You are a Polish teacher. Please provide me with 3 example sentences and translations containing the following Polish word.";
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, EnumIter)]
 pub enum Command {
     Chat(String),
     Ask(String),
@@ -21,6 +22,8 @@ pub enum Command {
     Cases(String),
     Example(String),
     Undo,
+    Help,
+    Unknown,
 }
 
 impl Command {
@@ -28,6 +31,7 @@ impl Command {
         let cmd_regex = Regex::new(COMMAND_REGEX).expect("implementation error - invalid regex");
         let no_arg_cmd_regex =
             Regex::new(NO_ARG_COMMAND_REGEX).expect("implementation error - invalid regex");
+
         if let Some(cap) = cmd_regex.captures(s) {
             let command = &cap[1];
             let arg = &cap[2];
@@ -38,14 +42,15 @@ impl Command {
                 "def" => Some(Command::Define(arg.to_string())),
                 "cases" => Some(Command::Cases(arg.to_string())),
                 "ex" => Some(Command::Example(arg.to_string())),
-                _ => None,
+                _ => Some(Command::Unknown),
             }
         } else if let Some(cap) = no_arg_cmd_regex.captures(s) {
             let command = &cap[1];
 
             match command {
                 "undo" => Some(Command::Undo),
-                _ => None,
+                "help" => Some(Command::Help),
+                _ => Some(Command::Unknown),
             }
         } else {
             None
@@ -102,12 +107,46 @@ impl TeachBot {
                 Command::Cases(word) => Conversation::ask(CASES_PROMPT, word).await,
                 Command::Example(word) => Conversation::ask(EXAMPLES_PROMPT, word).await,
                 Command::Undo => return self.undo_reply(),
+                Command::Help => return self.help_reply(),
+                Command::Unknown => return self.help_reply(),
             }?;
 
             Ok(MessageReply::channel(msg))
         } else {
             self.chat_response(message).await
         }
+    }
+
+    fn help_reply(&self) -> Result<MessageReply> {
+        let mut buf = String::new();
+
+        buf.push_str("Supported commands:\n\n");
+        for cmd in Command::iter() {
+            match cmd {
+                Command::Chat(_) => {
+                    buf.push_str("- `!chat <topic>` Start a new conversation (refreshes history)\n")
+                }
+                Command::Ask(_) => buf.push_str(
+                    "- `!ask <question>` Asks a question to the teacher. Does not affect the history\n",
+                ),
+                Command::Define(_) => {
+                    buf.push_str("- `!def <word>` Define / translate the given word or phrase\n")
+                }
+                Command::Cases(_) => {
+                    buf.push_str("- `!cases <noun>` Enumerate each case for the provided noun\n")
+                }
+                Command::Example(_) => buf.push_str(
+                    "- `!ex <word(s)>` Show 3 example sentences containing this word or phrase\n",
+                ),
+                Command::Undo => {
+                    buf.push_str("- `!undo` Remove the last message and reply from the chat history\n")
+                }
+                Command::Help => buf.push_str("- `!help` Print this help message\n"),
+                Command::Unknown => {}
+            }
+        }
+
+        Ok(MessageReply::reply(buf))
     }
 
     fn undo_reply(&mut self) -> Result<MessageReply> {
