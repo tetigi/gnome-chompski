@@ -65,3 +65,9 @@ At any point in a conversation, you can send the following special commands:
 - Add better support for other languages
 - ???
 - Profit
+
+### Wishlist
+
+- Ability to handle multiple connections from multiple users at the same time
+- Ability to limit users based on a token provided at startup
+- Ability to provide cloud-hosting for non-technical users
