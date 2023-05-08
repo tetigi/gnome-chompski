@@ -10,6 +10,15 @@ pub enum AuthenticationStrategy {
 
 const TOKEN_REGEX: &str = r"^!token\s+(.+)$";
 
+pub enum AuthResult {
+    /// Auth was successful
+    Success,
+    /// Token was provided correctly, but was invalid
+    InvalidToken,
+    /// Token was incorrectly provided
+    MalformedTokenRequest,
+}
+
 impl AuthenticationStrategy {
     pub fn auth_required(&self) -> bool {
         match self {
@@ -22,26 +31,26 @@ impl AuthenticationStrategy {
     pub async fn is_user_authenticated(&self, user_id: &str) -> Result<bool> {
         match self {
             AuthenticationStrategy::NoAuthentication => Ok(true),
-            AuthenticationStrategy::TokenList(store) => store.is_allocated(user_id).await,
+            AuthenticationStrategy::TokenList(store) => store.has_allocated_token(user_id).await,
         }
     }
 
-    pub async fn authenticate(&self, user_id: &str, msg: &str) -> Result<bool> {
+    pub async fn add_auth_for_new_user(&self, user_id: &str, msg: &str) -> Result<AuthResult> {
         match self {
-            AuthenticationStrategy::NoAuthentication => Ok(true),
+            AuthenticationStrategy::NoAuthentication => Ok(AuthResult::Success),
             AuthenticationStrategy::TokenList(store) => {
                 let token_regex =
                     Regex::new(TOKEN_REGEX).expect("implementation error - invalid regex");
-                if let Some(cap) = token_regex.captures(&msg) {
+                if let Some(cap) = token_regex.captures(msg) {
                     let token = &cap[1];
                     if store.is_token_valid(token).await? {
                         store.allocate(user_id, token).await?;
-                        Ok(true)
+                        Ok(AuthResult::Success)
                     } else {
-                        Ok(false)
+                        Ok(AuthResult::InvalidToken)
                     }
                 } else {
-                    Ok(false)
+                    Ok(AuthResult::MalformedTokenRequest)
                 }
             }
         }

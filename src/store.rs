@@ -62,7 +62,7 @@ impl Store {
     }
 
     /// Checks whether the user is already allocated
-    pub async fn is_allocated(&self, user_id: &str) -> Result<bool> {
+    pub async fn has_allocated_token(&self, user_id: &str) -> Result<bool> {
         let mut results = sqlx::query("SELECT * FROM tokens WHERE user_id = ?")
             .bind(user_id)
             .fetch(&self.pool);

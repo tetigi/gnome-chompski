@@ -10,7 +10,10 @@ use serenity::{
 };
 use std::{collections::HashMap, env, sync::Arc};
 
-use crate::{authentication::AuthenticationStrategy, model::TeachBot};
+use crate::{
+    authentication::{AuthResult, AuthenticationStrategy},
+    model::TeachBot,
+};
 
 const DISCORD_API_TOKEN: &str = "DISCORD_API_TOKEN";
 
@@ -30,18 +33,18 @@ impl Handler {
     async fn authenticate_user(&self, user: &UserId, ctx: &Context, msg: &Message) -> Result<bool> {
         let user_id = user.0.to_string();
 
-        let reply = if !self.auth_strategy.is_user_authenticated(&user_id).await? {
-            if self
-                .auth_strategy
-                .authenticate(&user_id, &msg.content)
-                .await?
-            {
-                "Looks good! Your user is now authenticated :D"
-            } else {
-                "Unfortunately, your token appears to be invalid or has already been used before.\n\nAre you sure you entered it correctly?"
-            }
-        } else {
-            "Hey there!\n\nUnfortunately, you are not authenticated yet. Please paste in your authentication token in the following format:\n\n`!token YOUR_TOKEN`"
+        if self.auth_strategy.is_user_authenticated(&user_id).await? {
+            return Ok(true);
+        }
+
+        let reply = match self
+            .auth_strategy
+            .add_auth_for_new_user(&user_id, &msg.content)
+            .await?
+        {
+            AuthResult::Success => "Looks good! Your user is now authenticated :D",
+            AuthResult::InvalidToken => "Unfortunately, your token appears to be invalid or has already been used before.\n\nAre you sure you entered it correctly?",
+            AuthResult::MalformedTokenRequest => "Hey there!\n\nUnfortunately, you are not authenticated yet. Please paste in your authentication token in the following format:\n\n`!token YOUR_TOKEN`",
         };
 
         msg.reply(&ctx.http, reply).await?;
