@@ -4,7 +4,10 @@ use serenity::{
     async_trait,
     framework::StandardFramework,
     futures::lock::Mutex,
-    model::prelude::{Message, Ready, UserId},
+    model::{
+        prelude::{Message, Ready, UserId},
+        user::User,
+    },
     prelude::{Context, EventHandler, GatewayIntents},
     Client,
 };
@@ -30,8 +33,8 @@ impl Handler {
         }
     }
 
-    async fn authenticate_user(&self, user: &UserId, ctx: &Context, msg: &Message) -> Result<bool> {
-        let user_id = user.0.to_string();
+    async fn authenticate_user(&self, user: &User, ctx: &Context, msg: &Message) -> Result<bool> {
+        let user_id = user.id.0.to_string();
 
         if self.auth_strategy.is_user_authenticated(&user_id).await? {
             return Ok(true);
@@ -42,9 +45,27 @@ impl Handler {
             .add_auth_for_new_user(&user_id, &msg.content)
             .await?
         {
-            AuthResult::Success => "Looks good! Your user is now authenticated :D",
-            AuthResult::InvalidToken => "Unfortunately, your token appears to be invalid or has already been used before.\n\nAre you sure you entered it correctly?",
-            AuthResult::MalformedTokenRequest => "Hey there!\n\nUnfortunately, you are not authenticated yet. Please paste in your authentication token in the following format:\n\n`!token YOUR_TOKEN`",
+            AuthResult::Success => {
+                warn!(
+                    "User {} ({user_id}) was successfully authenticated",
+                    user.name
+                );
+                "Looks good! Your user is now authenticated :D"
+            }
+            AuthResult::InvalidToken => {
+                warn!(
+                    "User {} ({user_id}) provided an invalid token: {}",
+                    user.name, msg.content
+                );
+                "Unfortunately, your token appears to be invalid or has already been used before.\n\nAre you sure you entered it correctly?"
+            }
+            AuthResult::MalformedTokenRequest => {
+                warn!(
+                    "User {} ({user_id}) wrote {}, but was not authenticated",
+                    user.name, msg.content
+                );
+                "Hey there!\n\nUnfortunately, you are not authenticated yet. Please paste in your authentication token in the following format:\n\n`!token YOUR_TOKEN`"
+            }
         };
 
         msg.reply(&ctx.http, reply).await?;
@@ -62,12 +83,17 @@ impl EventHandler for Handler {
 
         if self.auth_strategy.auth_required()
             && !self
-                .authenticate_user(&msg.author.id, &ctx, &msg)
+                .authenticate_user(&msg.author, &ctx, &msg)
                 .await
                 .unwrap()
         {
             return;
         };
+
+        warn!(
+            "User {} ({}) is chatting with Gnome Chompski.",
+            msg.author, msg.author.id.0
+        );
 
         let mut all_bots = self.state.lock().await;
 
