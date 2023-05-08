@@ -37,6 +37,10 @@ Then start up Gnome Chompski!
 cargo run
 ```
 
+### Chatting with the bot
+
+Gnome Chompski only chats with people 1:1 - he will cowardly refuse to talk in a non-private channel.
+
 ## Commands
 
 Gnome Chompski understands all kinds of useful commands. The place to start is with a `chat!` invocation:

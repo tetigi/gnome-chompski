@@ -5,7 +5,7 @@ use serenity::{
     framework::StandardFramework,
     futures::lock::Mutex,
     model::{
-        prelude::{Message, Ready, UserId},
+        prelude::{Channel, Message, Ready, UserId},
         user::User,
     },
     prelude::{Context, EventHandler, GatewayIntents},
@@ -79,6 +79,23 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if msg.author.bot {
             return;
+        }
+
+        match msg.channel(&ctx.http).await {
+            Ok(channel) => {
+                if !matches!(channel, Channel::Private(_)) {
+                    if let Err(why) = msg
+                        .reply(
+                            &ctx.http,
+                            "I'm shy, so I don't talk in public! Message me directly to chat :)",
+                        )
+                        .await
+                    {
+                        error!("Error sending reply: {:?}", why);
+                    }
+                }
+            }
+            Err(why) => error!("Could not fetch channel due to {why:?}"),
         }
 
         if self.auth_strategy.auth_required()
