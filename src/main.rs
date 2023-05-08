@@ -4,17 +4,21 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use authentication::AuthenticationStrategy;
 use clap::{Parser, ValueHint};
 use discord::do_chat_bot;
 use dotenvy::dotenv;
 use eyre::{bail, Result};
-use log::LevelFilter;
+use log::{warn, LevelFilter};
 use store::Store;
 
+mod authentication;
 mod discord;
 mod gpt;
 mod model;
 mod store;
+
+const DEFAULT_DATA_DIR: &str = "var/data";
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -23,12 +27,10 @@ pub struct Args {
     #[arg(long, value_hint = ValueHint::DirPath, value_parser)]
     data_dir: Option<PathBuf>,
 
-    /// Location of a tokens file to ensure is loaded. Does nothing if not provided.
+    /// Location of a tokens file. If provided, enables the token-based auth strategy.
     #[arg(long, value_hint = ValueHint::DirPath, value_parser)]
     tokens_file: Option<PathBuf>,
 }
-
-const DEFAULT_DATA_DIR: &str = "var/data";
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -39,15 +41,19 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
-    let store = Store::connect(&args.data_dir.unwrap_or(DEFAULT_DATA_DIR.into())).await?;
-
-    if let Some(tokens_file) = args.tokens_file {
+    let auth_strategy = if let Some(tokens_file) = args.tokens_file {
+        warn!("Tokens file provided. Starting with auth-strategy=TOKEN_LIST");
+        let store = Store::connect(&args.data_dir.unwrap_or(DEFAULT_DATA_DIR.into())).await?;
         store
             .ensure_tokens(&read_tokens_file(&tokens_file)?)
             .await?;
-    }
+        AuthenticationStrategy::TokenList(store)
+    } else {
+        warn!("No tokens file provided. Starting with auth-strategy=ALLOW_ALL");
+        AuthenticationStrategy::NoAuthentication
+    };
 
-    do_chat_bot(store).await?;
+    do_chat_bot(auth_strategy).await?;
 
     Ok(())
 }

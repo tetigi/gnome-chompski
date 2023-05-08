@@ -59,6 +59,18 @@ At any point in a conversation, you can send the following special commands:
 - `!undo` -> Forget the last message and reply (useful if you want to retry a sentence).
 - `!help` -> Print a helpful help message.
 
+## (Optional) Authentication
+
+If you would like to host Gnome Chompski on behalf of others, Gnome Chompski creates user-sessions for each user on startup. These are (currently) temporary, so are thrown away on restart.
+
+### Auth Strategies
+
+If you start up Gnome Chompski with no arguments, he will start in `NO_AUTH` mode - that is, anyone who connects to him will begin a new session!
+
+Alternatively, you can provide Gnome Chompski with a `tokens-file` at startup (a file containing a new-line delimited list of tokens you'd like to support) - he will then load these into a local database, and require that new users join by providing one of these tokens. Once a user is authenticated once, they will no longer be prompted (unless you delete the database).
+
+You can add new tokens to this file whenever you want and they will be added to the database. Removing tokens from the file will _not_ remove them from the database.
+
 ## Next Steps
 
 - Get Gnome Chompski set up as a general chat-bot
@@ -68,6 +80,7 @@ At any point in a conversation, you can send the following special commands:
 
 ### Wishlist
 
-- Ability to handle multiple connections from multiple users at the same time
+- ~Ability to handle multiple connections from multiple users at the same time~
+- Add tests for token stuff
 - Ability to limit users based on a token provided at startup
 - Ability to provide cloud-hosting for non-technical users

@@ -1,6 +1,5 @@
 use eyre::Result;
 use log::{error, warn};
-use regex::Regex;
 use serenity::{
     async_trait,
     framework::StandardFramework,
@@ -11,42 +10,38 @@ use serenity::{
 };
 use std::{collections::HashMap, env, sync::Arc};
 
-use crate::{model::TeachBot, store::Store};
+use crate::{authentication::AuthenticationStrategy, model::TeachBot};
 
 const DISCORD_API_TOKEN: &str = "DISCORD_API_TOKEN";
-const TOKEN_REGEX: &str = r"^!token\s+(.+)$";
 
 struct Handler {
     state: Arc<Mutex<HashMap<UserId, TeachBot>>>,
-    store: Store,
+    auth_strategy: AuthenticationStrategy,
 }
 
 impl Handler {
-    fn new(store: Store) -> Self {
+    fn new(auth_strategy: AuthenticationStrategy) -> Self {
         Self {
             state: Arc::new(Mutex::new(HashMap::new())),
-            store,
+            auth_strategy,
         }
     }
 
     async fn authenticate_user(&self, user: &UserId, ctx: &Context, msg: &Message) -> Result<bool> {
         let user_id = user.0.to_string();
-        let reply = if !self.store.is_allocated(&user_id).await? {
-            let token_regex =
-                Regex::new(TOKEN_REGEX).expect("implementation error - invalid regex");
-            if let Some(cap) = token_regex.captures(&msg.content) {
-                let token = &cap[1];
-                if self.store.is_token_valid(token).await? {
-                    self.store.allocate(&user_id, token).await?;
-                    "Looks good! Your user is now authenticated :D"
-                } else {
-                    "Unfortunately, your token appears to be invalid or has already been used before.\n\nAre you sure you entered it correctly?"
-                }
+
+        let reply = if !self.auth_strategy.is_user_authenticated(&user_id).await? {
+            if self
+                .auth_strategy
+                .authenticate(&user_id, &msg.content)
+                .await?
+            {
+                "Looks good! Your user is now authenticated :D"
             } else {
-                "Hey there!\n\nUnfortunately, you are not authenticated yet. Please paste in your authentication token in the following format:\n\n`!token YOUR_TOKEN`"
+                "Unfortunately, your token appears to be invalid or has already been used before.\n\nAre you sure you entered it correctly?"
             }
         } else {
-            return Ok(true);
+            "Hey there!\n\nUnfortunately, you are not authenticated yet. Please paste in your authentication token in the following format:\n\n`!token YOUR_TOKEN`"
         };
 
         msg.reply(&ctx.http, reply).await?;
@@ -62,16 +57,31 @@ impl EventHandler for Handler {
             return;
         }
 
-        if !self
-            .authenticate_user(&msg.author.id, &ctx, &msg)
-            .await
-            .unwrap()
+        if self.auth_strategy.auth_required()
+            && !self
+                .authenticate_user(&msg.author.id, &ctx, &msg)
+                .await
+                .unwrap()
         {
             return;
         };
 
         let mut all_bots = self.state.lock().await;
-        let state = all_bots.entry(msg.author.id).or_default();
+
+        let state = if let Some(state) = all_bots.get_mut(&msg.author.id) {
+            state
+        } else {
+            if let Err(why) = msg
+                .reply(
+                    &ctx.http,
+                    "_This is your first message of the session. Did Gnome Chompski just wake up?_",
+                )
+                .await
+            {
+                error!("Error sending reply: {:?}", why);
+            }
+            all_bots.entry(msg.author.id).or_default()
+        };
 
         let typing = match msg.channel_id.start_typing(&ctx.http) {
             Err(why) => {
@@ -108,7 +118,7 @@ impl EventHandler for Handler {
     }
 }
 
-pub async fn do_chat_bot(store: Store) -> Result<()> {
+pub async fn do_chat_bot(auth_strategy: AuthenticationStrategy) -> Result<()> {
     let framework = StandardFramework::new().configure(|c| c.prefix("~"));
 
     let token =
@@ -118,7 +128,7 @@ pub async fn do_chat_bot(store: Store) -> Result<()> {
 
     let mut client = Client::builder(&token, intents)
         .framework(framework)
-        .event_handler(Handler::new(store))
+        .event_handler(Handler::new(auth_strategy))
         .await?;
 
     if let Err(why) = client.start().await {
