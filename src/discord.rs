@@ -92,7 +92,7 @@ impl EventHandler for Handler {
 
         warn!(
             "User {} ({}) is chatting with Gnome Chompski.",
-            msg.author, msg.author.id.0
+            msg.author.name, msg.author.id.0
         );
 
         let mut all_bots = self.state.lock().await;
