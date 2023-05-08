@@ -1,16 +1,27 @@
 [package]
 name = "gnome-chompski"
+authors = ["Luke Tomlin <luke@toml.in>"]
 version = "0.1.0"
 edition = "2021"
+description = "Gnome Chompski is a ChatGPT-powered Gnome that helps you learn Polish"
+repository = "https://github.com/tetigi/gnome-chompski"
+homepage = "https://github.com/tetigi/gnome-chompski"
+license-file = "LICENSE"
+readme = "README.md"
 
 [dependencies]
-dotenv = { version = "0.15.0" }
+clap = { version = "4.2.7", features = ["derive"] }
+dotenvy = "0.15.7"
+env_logger = "0.10.0"
 eyre = "0.6.8"
+futures = "0.3.28"
 inquire = "0.6.0"
+log = "0.4.17"
 regex = "1"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
+sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "sqlite"] }
 serenity = { version = "0.11.5", features = ["default_native_tls"] }
 strum = { version = "0.24.1", features = ["derive"] }
 strum_macros = "0.24.1"

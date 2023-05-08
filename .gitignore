@@ -1,2 +1,4 @@
 /target
+/var
 .env
+tokens.txt
