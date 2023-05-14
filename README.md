@@ -86,6 +86,6 @@ You can add new tokens to this file whenever you want and they will be added to 
 
 - ~Ability to handle multiple connections from multiple users at the same time~
 - ~Ability to limit users based on a token provided at startup~
-- Add 'long request' checks or messages when something goes wrong.
+- ~Add 'long request' checks or messages when something goes wrong.~
 - Add tests for token stuff
 - Ability to provide cloud-hosting for non-technical users
