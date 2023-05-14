@@ -74,30 +74,48 @@ impl Handler {
     }
 }
 
+macro_rules! just_log_error {
+    ($context:tt, $x:expr) => {{
+        match $x {
+            Err(e) => {
+                error!("Error while $context: {e:?}");
+                return;
+            }
+            Ok(res) => res,
+        }
+    }};
+}
+
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
+        // We don't reply to bots
         if msg.author.bot {
             return;
         }
 
+        // We don't reply on public / non-private channels
         match msg.channel(&ctx.http).await {
             Ok(channel) => {
                 if !matches!(channel, Channel::Private(_)) {
-                    if let Err(why) = msg
-                        .reply(
+                    just_log_error!(
+                        "sending reply",
+                        msg.reply(
                             &ctx.http,
                             "I'm shy, so I don't talk in public! Message me directly to chat :)",
                         )
                         .await
-                    {
-                        error!("Error sending reply: {:?}", why);
-                    }
+                    );
+                    return;
                 }
             }
-            Err(why) => error!("Could not fetch channel due to {why:?}"),
+            Err(why) => {
+                error!("Could not fetch channel due to {why:?}");
+                return;
+            }
         }
 
+        // Authenticate if necessary
         if self.auth_strategy.auth_required()
             && !self
                 .authenticate_user(&msg.author, &ctx, &msg)
@@ -112,50 +130,36 @@ impl EventHandler for Handler {
             msg.author.name, msg.author.id.0
         );
 
+        // Find the relevant bot for this user
         let mut all_bots = self.state.lock().await;
 
         let state = if let Some(state) = all_bots.get_mut(&msg.author.id) {
             state
         } else {
-            if let Err(why) = msg
-                .reply(
+            just_log_error!(
+                "sending reply",
+                msg.reply(
                     &ctx.http,
                     "_This is your first message of the session. Did Gnome Chompski just wake up?_",
                 )
                 .await
-            {
-                error!("Error sending reply: {:?}", why);
-            }
+            );
             all_bots.entry(msg.author.id).or_default()
         };
 
-        let typing = match msg.channel_id.start_typing(&ctx.http) {
-            Err(why) => {
-                error!("Error starting typing: {:?}", why);
-                None
-            }
-            Ok(typing) => Some(typing),
-        };
+        let typing = just_log_error!("starting typing", msg.channel_id.start_typing(&ctx.http));
 
-        let message_and_reply = state
-            .handle(&msg.content)
-            .await
-            .expect("could not interact with bot");
+        let message_and_reply =
+            just_log_error!("interacting with bot", state.handle(&msg.content).await);
 
-        if let Some(typing) = typing {
-            let _ = typing.stop();
-        }
+        let _ = typing.stop();
 
         if let Some(reply) = message_and_reply.reply {
-            if let Err(why) = msg.reply(&ctx.http, reply).await {
-                error!("Error sending reply: {:?}", why);
-            }
+            just_log_error!("sending reply", msg.reply(&ctx.http, reply).await);
         }
 
         if let Some(message) = message_and_reply.channel {
-            if let Err(why) = msg.channel_id.say(&ctx.http, message).await {
-                error!("Error sending message: {:?}", why);
-            }
+            just_log_error!("sending reply", msg.reply(&ctx.http, message).await);
         }
     }
 
@@ -182,4 +186,17 @@ pub async fn do_chat_bot(auth_strategy: AuthenticationStrategy) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_just_log_error_passes_ok() {
+        let x: Result<usize, String> = Ok(123);
+        let res = just_log_error!("doing foo", x);
+
+        assert_eq!(res, 123);
+    }
 }

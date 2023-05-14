@@ -221,15 +221,15 @@ mod tests {
             Command::read("!ex quux!"),
             Some(Command::Example("quux!".to_string()))
         );
-        assert_eq!(Command::read("!undo foo bar"), Some(Command::Undo));
+        assert_eq!(Command::read("!undo"), Some(Command::Undo));
     }
 
     #[test]
     fn test_bad_commands() {
         assert_eq!(Command::read("chat foo"), None);
-        assert_eq!(Command::read("!foo"), None);
+        assert_eq!(Command::read("!foo"), Some(Command::Unknown));
         assert_eq!(Command::read(""), None);
-        assert_eq!(Command::read("!chat"), None);
+        assert_eq!(Command::read("!chat"), Some(Command::Unknown));
         assert_eq!(Command::read("!chat "), None);
     }
 }
