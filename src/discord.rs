@@ -11,11 +11,11 @@ use serenity::{
     prelude::{Context, EventHandler, GatewayIntents},
     Client,
 };
-use std::{collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, env, sync::Arc, time::Duration};
 
 use crate::{
     authentication::{AuthResult, AuthenticationStrategy},
-    model::TeachBot,
+    model::{MessageReply, TeachBot},
 };
 
 const DISCORD_API_TOKEN: &str = "DISCORD_API_TOKEN";
@@ -147,17 +147,43 @@ impl EventHandler for Handler {
             all_bots.entry(msg.author.id).or_default()
         };
 
+        // Start typing, indicating to the user that we're doing some work
         let typing = just_log_error!("starting typing", msg.channel_id.start_typing(&ctx.http));
 
-        let message_and_reply =
-            just_log_error!("interacting with bot", state.handle(&msg.content).await);
+        // Get the relevant reply from bot. We timeout after 10 seconds, as ChatGPT is probably
+        // overloaded and just won't reply to us.
+        let message_and_reply = match tokio::time::timeout(
+            Duration::from_secs(10),
+            state.handle(&msg.content),
+        )
+        .await
+        {
+            Ok(maybe_msg) => match maybe_msg {
+                Ok(msg) => msg,
+                Err(e) => {
+                    error!("Error while interacting with bot: {e:?}");
+                    MessageReply::reply("I'm sorry, I don't understand :(
 
+_Something went wrong whilst communicating with Gnome Chompski. Please restate your reply and try again._")
+                }
+            },
+            Err(_) => MessageReply::reply(
+                "...I'm sorry, I wasn't paying attention. What were we talking about?
+
+_ChatGPT request timed out. Please write your reply again._
+",
+            ),
+        };
+
+        // Stop typing before sending the message back
         let _ = typing.stop();
 
+        // Send the reply as a reply (wow!)
         if let Some(reply) = message_and_reply.reply {
             just_log_error!("sending reply", msg.reply(&ctx.http, reply).await);
         }
 
+        // Send the channel message
         if let Some(message) = message_and_reply.channel {
             just_log_error!("sending reply", msg.reply(&ctx.http, message).await);
         }
