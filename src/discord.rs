@@ -153,7 +153,7 @@ impl EventHandler for Handler {
         // Get the relevant reply from bot. We timeout after 10 seconds, as ChatGPT is probably
         // overloaded and just won't reply to us.
         let message_and_reply = match tokio::time::timeout(
-            Duration::from_secs(10),
+            Duration::from_secs(20),
             state.handle(&msg.content),
         )
         .await
