@@ -90,5 +90,6 @@ You can add new tokens to this file whenever you want and they will be added to 
 - Provide the context that the user is replying to, to better contextualise the teach-reply
 - Add intro message with best-practices
 - Prepend teacher / reply with markers.
+- Experiment with adding games, such as Q&A, translation attempts etc.
 - Add tests for token stuff
 - Ability to provide cloud-hosting for non-technical users
